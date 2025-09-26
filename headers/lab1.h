@@ -1,7 +1,6 @@
 #ifndef COLOR_H
 #define COLOR_H
 
-#include <stdexcept>
 #include <tuple>
 
 class BoundedFloat
