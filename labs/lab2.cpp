@@ -125,6 +125,28 @@ int main() {
             cout << "Caught out_of_range: " << e.what() << "\n";
         }
 
+        // --- Test 8: copy constructor (owns memory) ---
+        Vector<int> v5(v2);
+        cout << "v5 copied from v2: Size = " << v5.Size() << ", OwnsMemory = " << v5.OwnsMemory() << "\n";
+        v5.SetElement(0, 100);
+        cout << "v2[0] = " << v2.GetElement(0) << ", v5[0] = " << v5.GetElement(0) << "\n";
+
+        // --- Test 9: copy constructor (doesn't own memory) ---
+        Vector<int> v6(raw, 3);
+        Vector<int> v7(v6);
+        cout << "v7 copied from v6: OwnsMemory = " << v7.OwnsMemory() << "\n";
+
+        // --- Test 10: zero size constructor ---
+        Vector<int> v8(0);
+        cout << "v8 zero size: Size = " << v8.Size() << "\n";
+
+        // --- Test 11: dot product size mismatch ---
+        try {
+            v1.Dot(v2);  // different sizes
+        } catch (const invalid_argument& e) {
+            cout << "Caught invalid_argument: " << e.what() << "\n";
+        }
+
     } catch (const exception& e) {
         cout << "Unexpected exception: " << e.what() << "\n";
     }
