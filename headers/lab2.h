@@ -1,8 +1,9 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 
-#include <stdio.h>
-#include <stddef.h>
+#include <cstddef>
+#include <stdexcept>
+#include <algorithm>
 
 template <typename T>
 class Vector {
@@ -19,12 +20,12 @@ public:
     bool OwnsMemory() const;
     T* GetPointer() const;
 
-    void SetElement(const int index, const T value);
-    T GetElement(int index) const;
+    void SetElement(const size_t index, const T value);
+    T GetElement(size_t index) const;
 
     T Dot(const Vector& other) const;
 
-    void Link(const T* external_ptr, const size_t size);
+    void Link(T* external_ptr, const size_t size);
     void Unlink();
 
 protected:

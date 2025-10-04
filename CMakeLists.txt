@@ -17,18 +17,18 @@ FetchContent_MakeAvailable(googletest)
 enable_testing()
 
 # === Libraries for labs ===
-add_library(lab1_lib labs/lab1.cpp headers/lab1.h)
+add_library(lab1_lib labs/lab1.cpp)
 target_include_directories(lab1_lib PUBLIC headers)
 
-add_library(lab2_lib labs/lab2.cpp headers/lab2.h)
+add_library(lab2_lib labs/lab2.cpp)
 target_include_directories(lab2_lib PUBLIC headers)
 
 # === Executables (labs themselves) ===
 add_executable(lab1 labs/lab1.cpp)
-target_link_libraries(lab1 PRIVATE lab1_lib)
+target_include_directories(lab1 PRIVATE headers)
 
 add_executable(lab2 labs/lab2.cpp)
-target_link_libraries(lab2 PRIVATE lab2_lib)
+target_include_directories(lab2 PRIVATE headers)
 
 # === Tests ===
 add_executable(lab1_test tests/lab1_test.cpp)
@@ -42,8 +42,8 @@ gtest_discover_tests(lab1_test)
 gtest_discover_tests(lab2_test)
 
 # === Compiler warnings ===
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    foreach(tgt lab1 lab2 lab1_test lab2_test)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    foreach(tgt lab1 lab2 lab1_test lab2_test lab1_lib lab2_lib)
         target_compile_options(${tgt} PRIVATE -Wall -Wextra -pedantic -g)
     endforeach()
 endif()

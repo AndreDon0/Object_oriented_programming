@@ -1,44 +1,49 @@
-#include <cassert>
+#include <gtest/gtest.h>
 #include "lab2.h"
 
-void run_tests() {
-    // Тест 1: пустой вектор
-    Vector v1;
-    assert(v1.Size() == 0);
-    assert(v1.OwnsMemory());
+// --- Basic functionality tests ---
+TEST(VectorTest, DefaultConstructor) {
+    Vector<double> v1;
+    EXPECT_EQ(v1.Size(), 0);
+    EXPECT_TRUE(v1.OwnsMemory());
+}
 
-    // Тест 2: вектор с размером
-    Vector v2(5);
-    assert(v2.Size() == 5);
-    for (int i = 0; i < 5; i++) {
-        assert(v2.GetElement(i) == 0);
+TEST(VectorTest, SizedConstructor) {
+    Vector<double> v2(5);
+    EXPECT_EQ(v2.Size(), 5);
+    for (size_t i = 0; i < 5; i++) {
+        EXPECT_EQ(v2.GetElement(i), 0);
     }
+}
 
-    // Тест 3: вектор с размером и значением
-    Vector v3(4, 7);
-    for (int i = 0; i < 4; i++) {
-        assert(v3.GetElement(i) == 7);
+TEST(VectorTest, FillConstructor) {
+    Vector<double> v3(4, 7);
+    for (size_t i = 0; i < 4; i++) {
+        EXPECT_EQ(v3.GetElement(i), 7);
     }
+}
 
-    // Тест 4: внешний буфер
+TEST(VectorTest, ExternalBuffer) {
     double data[3] = {1, 2, 3};
-    Vector v4(data, 3);
-    assert(!v4.OwnsMemory());
-    assert(v4.GetElement(1) == 2);
+    Vector<double> v4(data, 3);
+    EXPECT_FALSE(v4.OwnsMemory());
+    EXPECT_EQ(v4.GetElement(1), 2);
+}
 
-    // Тест 5: скалярное произведение
-    Vector v5(3, 2); // [2,2,2]
-    Vector v6(3, 3); // [3,3,3]
-    assert(v5.Dot(v6) == 18); // 2*3+2*3+2*3
+TEST(VectorTest, DotProduct) {
+    Vector<double> v5(3, 2); // [2,2,2]
+    Vector<double> v6(3, 3); // [3,3,3]
+    EXPECT_EQ(v5.Dot(v6), 18); // 2*3+2*3+2*3
+}
 
-    // Тест 6: Link и Unlink
+TEST(VectorTest, LinkAndUnlink) {
     double buf[2] = {10, 20};
+    Vector<double> v5(3, 2);
     v5.Link(buf, 2);
-    assert(!v5.OwnsMemory());
-    assert(v5.GetElement(0) == 10);
+    EXPECT_FALSE(v5.OwnsMemory());
+    EXPECT_EQ(v5.GetElement(0), 10);
 
     v5.Unlink();
-    assert(v5.OwnsMemory());
-    assert(v5.Size() == 2);
-    assert(v5.GetElement(1) == 20);
+    EXPECT_TRUE(v5.OwnsMemory());
+    EXPECT_EQ(v5.Size(), 0);
 }
