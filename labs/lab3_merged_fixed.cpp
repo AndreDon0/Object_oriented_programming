@@ -269,6 +269,31 @@ Matrix<T>& Matrix<T>::apply(T (*f)(T, U), Matrix<U> &other) {
     return *this;
 }
 
+// Helper functions for your beautiful apply functions!
+template<typename T>
+T negate_func(T x) { return -x; }
+
+template<typename T, typename U>
+common_type_t<T, U> add_func(T x, U y) { return x + y; }
+
+template<typename T, typename U>
+common_type_t<T, U> sub_func(T x, U y) { return x - y; }
+
+template<typename T, typename U>
+common_type_t<T, U> mul_func(T x, U y) { return x * y; }
+
+template<typename T, typename U>
+common_type_t<T, U> add_scalar_func(T x, U scalar) { return x + scalar; }
+
+template<typename T, typename U>
+common_type_t<T, U> sub_scalar_func(T x, U scalar) { return x - scalar; }
+
+template<typename T, typename U>
+common_type_t<T, U> mul_scalar_func(T x, U scalar) { return x * scalar; }
+
+template<typename T, typename U>
+common_type_t<T, U> scalar_sub_func(T scalar, U x) { return scalar - x; }
+
 template <typename T>
 Matrix<T> operator+(const Matrix<T> &m) {
     return Matrix<T>(m);
@@ -277,7 +302,7 @@ Matrix<T> operator+(const Matrix<T> &m) {
 template <typename T>
 Matrix<T> operator-(const Matrix<T> &m) {
     Matrix<T> result(m);
-    result.apply(neg_func<T>);
+    result.apply(negate_func<T>);
     return result;
 }
 
@@ -288,7 +313,7 @@ Matrix<common_type_t<T, U>> operator+(const Matrix<T>& m1, const Matrix<U>& m2) 
 
 template <typename T, typename U>
 Matrix<common_type_t<T, U>> operator+(const Matrix<T>& m, const U& scalar) {
-    return Matrix<common_type_t<T, U>>(m).apply(add_scalar_func<T, U>, scalar);
+    return Matrix<common_type_t<T, U>>(m).apply(add_scalar_func<T, U>);
 }
 
 template <typename T, typename U>
@@ -329,39 +354,13 @@ Matrix<common_type_t<T, U>> operator*(const Matrix<T>& m1, const Matrix<U>& m2) 
 
 template <typename T, typename U>
 Matrix<common_type_t<T, U>> operator*(const Matrix<T>& m, const U& scalar) {
-    return Matrix<common_type_t<T, U>>(m).apply([scalar](U x) { return x * scalar; });
+    return Matrix<common_type_t<T, U>>(m).apply(mul_scalar_func<T, U>, scalar);
 }
 
 template <typename T, typename U>
 Matrix<common_type_t<T, U>> operator*(const U& scalar, const Matrix<T>& m) {
     return m * scalar;
 }
-
-// Helper functions for apply operations
-template<typename T, typename U>
-common_type_t<T, U> add_func(T a, U b) { return a + b; }
-
-template<typename T, typename U>
-common_type_t<T, U> sub_func(T a, U b) { return a - b; }
-
-template<typename T, typename U>
-common_type_t<T, U> mul_func(T a, U b) { return a * b; }
-
-template<typename T>
-T neg_func(T a) { return -a; }
-
-template<typename T, typename U>
-common_type_t<T, U> add_scalar_func(T a, U scalar) { return a + scalar; }
-
-template<typename T, typename U>
-common_type_t<T, U> mul_scalar_func(T a, U scalar) { return a * scalar; }
-
-template<typename T, typename U>
-common_type_t<T, U> sub_scalar_func(T a, U scalar) { return a - scalar; }
-
-template<typename T, typename U>
-common_type_t<T, U> scalar_sub_func(T scalar, U a) { return scalar - a; }
-
 
 template <typename T>
 template <typename U>
@@ -775,7 +774,7 @@ int main() {
     return 0;
 }
 
-// Explicit template instantiations for common cases
+// Explicit instantiations for common cases
 template class Matrix<int>;
 template Matrix<int> operator+<int>(const Matrix<int>&);
 template Matrix<int> operator-<int>(const Matrix<int>&);
@@ -783,8 +782,5 @@ template Matrix<common_type_t<int, int>> operator+<int, int>(const Matrix<int>&,
 template Matrix<common_type_t<int, int>> operator-<int, int>(const Matrix<int>&, const Matrix<int>&);
 template Matrix<common_type_t<int, int>> operator*<int, int>(const Matrix<int>&, const Matrix<int>&);
 template Matrix<common_type_t<int, int>> operator+<int, int>(const Matrix<int>&, const int&);
-template Matrix<common_type_t<int, int>> operator-<int, int>(const Matrix<int>&, const int&);
 template Matrix<common_type_t<int, int>> operator*<int, int>(const Matrix<int>&, const int&);
-template Matrix<common_type_t<int, int>> operator+<int, int>(const int&, const Matrix<int>&);
-template Matrix<common_type_t<int, int>> operator-<int, int>(const int&, const Matrix<int>&);
-template Matrix<common_type_t<int, int>> operator*<int, int>(const int&, const Matrix<int>&);
+
