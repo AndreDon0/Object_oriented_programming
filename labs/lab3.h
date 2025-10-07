@@ -84,9 +84,9 @@ public:
     Matrix<T> Transpose() const;
 
     template <typename U>
-    Matrix<U>& apply(U (*f)(T));
+    Matrix<U> apply(U (*f)(T));
     template <typename U, typename F>
-    Matrix<F>& apply(F (*f)(T, U), Matrix<U> &other);
+    Matrix<F> apply(F (*f)(T, U), Matrix<U> &other);
 
     Matrix<T>& apply(T (*f)(T));
     template <typename U>
@@ -97,7 +97,8 @@ private:
     size_t rows, cols;
 
     bool is_rows_cols_valid() const;
-    bool is_rows_cols_equal(const Matrix &other) const;
+    template <typename U>
+    bool is_rows_cols_equal(const Matrix<U> &other) const;
     void free_memory();
 };
 

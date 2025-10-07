@@ -14,7 +14,8 @@ bool Matrix<T>::is_rows_cols_valid() const {
 }
 
 template <typename T>
-bool Matrix<T>::is_rows_cols_equal(const Matrix<T> &other) const {
+template <typename U>
+bool Matrix<T>::is_rows_cols_equal(const Matrix<U> &other) const {
     if (this->rows == other.rows and this->cols == other.cols) {
         return true;
     } else {
@@ -119,29 +120,31 @@ Matrix<T>::~Matrix() {
 
 template <typename T>
 template <typename U>
-Matrix<U>& Matrix<T>::apply(U (*f)(T)) {
+Matrix<U> Matrix<T>::apply(U (*f)(T)) {
+    Matrix<U> result(this->rows, this->cols);
     for (int row = 0; row < this->rows; ++row) {
         for (int col = 0; col < this->cols; ++col) {
-            this->data[row][col] = f(this->data[row][col]);
+            result[row][col] = f(this->data[row][col]);
         }
     }
 
-    return *this;
+    return result;
 }
 
 template <typename T>
 template <typename U, typename F>
-Matrix<F>& Matrix<T>::apply(F (*f)(T, U), Matrix<U> &other) {
+Matrix<F> Matrix<T>::apply(F (*f)(T, U), Matrix<U> &other) {
     if (!is_rows_cols_equal(other))
         throw invalid_argument("Matrix dimensions do not match");
 
+    Matrix<F> result(this->rows, this->cols);
     for (int row = 0; row < this->rows; ++row) {
         for (int col = 0; col < this->cols; ++col) {
-            this->data[row][col] = f(this->data[row][col], other.data[row][col]);
+            result[row][col] = f(this->data[row][col], other.data[row][col]);
         }
     }
 
-    return *this;
+    return result;
 }
 
 template <typename T>
@@ -172,43 +175,43 @@ Matrix<T>& Matrix<T>::apply(T (*f)(T, U), Matrix<U> &other) {
 
 template <typename U>
 Matrix<U> operator+(const Matrix<U> &m) {
-    return Matrix(m);
+    return Matrix<U>(m);
 }
 
 template <typename U>
 Matrix<U> operator-(const Matrix<U> &m) {
-    return Matrix(m).apply([](U x) { return -x; });
+    return Matrix<U>(m).apply([](U x) { return -x; });
 }
 
 
 template <typename T, typename U>
 Matrix<common_type_t<T, U>> operator+(const Matrix<T>& m1, const Matrix<U>& m2) {
-    return Matrix(m1).apply(m2, [](T x, U y) { return x + y; });
+    return Matrix<common_type_t<T, U>>(m1).apply(m2, [](T x, U y) { return x + y; });
 }
 
 template <typename T, typename U>
 Matrix<common_type_t<T, U>> operator+(const Matrix<T>& m, const U& scalar) {
-    return Matrix(m).apply([scalar](U x) { return x + scalar; });
+    return Matrix<common_type_t<T, U>>(m).apply([scalar](U x) { return x + scalar; });
 }
 
 template <typename T, typename U>
 Matrix<common_type_t<T, U>> operator+(const U& scalar, const Matrix<T>& m) {
-    return Matrix(m).apply([scalar](U x) { return x + scalar; });
+    return m + scalar;
 }
 
 template <typename T, typename U>
 Matrix<common_type_t<T, U>> operator-(const Matrix<T>& m1, const Matrix<U>& m2) {
-    return Matrix(m1).apply(m2, [](T x, U y) { return x - y; });
+    return Matrix<common_type_t<T, U>>(m1).apply(m2, [](T x, U y) { return x - y; });
 }
 
 template <typename T, typename U>
 Matrix<common_type_t<T, U>> operator-(const Matrix<T>& m, const U& scalar) {
-    return Matrix(m).apply([scalar](U x) { return x - scalar; });
+    return Matrix<common_type_t<T, U>>(m).apply([scalar](U x) { return x - scalar; });
 }
 
 template <typename T, typename U>
 Matrix<common_type_t<T, U>> operator-(const U& scalar, const Matrix<T>& m) {
-    return Matrix(m).apply([scalar](U x) { return scalar - x; });
+    return Matrix<common_type_t<T, U>>(m).apply([scalar](U x) { return scalar - x; });
 }
 
 template <typename T, typename U>
@@ -229,12 +232,12 @@ Matrix<common_type_t<T, U>> operator*(const Matrix<T>& m1, const Matrix<U>& m2) 
 
 template <typename T, typename U>
 Matrix<common_type_t<T, U>> operator*(const Matrix<T>& m, const U& scalar) {
-    return Matrix(m).apply([scalar](U x) { return x * scalar; });
+    return Matrix<common_type_t<T, U>>(m).apply([scalar](U x) { return x * scalar; });
 }
 
 template <typename T, typename U>
 Matrix<common_type_t<T, U>> operator*(const U& scalar, const Matrix<T>& m) {
-    return Matrix(m).apply([scalar](U x) { return x * scalar; });
+    return m * scalar;
 }
 
 template <typename T>
