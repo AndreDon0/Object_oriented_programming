@@ -13,10 +13,10 @@ public:
     Matrix();
     Matrix(const int rows, const int cols);
 
-    Matrix(const Matrix &other);
-    Matrix(Matrix &&other);
-    Matrix& operator=(const Matrix &other);
-    Matrix& operator=(Matrix &&other);
+    Matrix(const Matrix<T> &other);
+    Matrix(Matrix<T> &&other);
+    Matrix<T>& operator=(const Matrix<T> &other);
+    Matrix<T>& operator=(Matrix<T> &&other);
 
     ~Matrix();
 
@@ -84,9 +84,13 @@ public:
     Matrix<T> Transpose() const;
 
     template <typename U>
-    void apply(U (*f)(T));
+    Matrix<U>& apply(U (*f)(T));
     template <typename U, typename F>
-    void apply(F (*f)(T, U), Matrix<U> &other);
+    Matrix<F>& apply(F (*f)(T, U), Matrix<U> &other);
+
+    Matrix<T>& apply(T (*f)(T));
+    template <typename U>
+    Matrix<T>& apply(T (*f)(T, U), Matrix<U> &other);
 
 private:
     T **data;
