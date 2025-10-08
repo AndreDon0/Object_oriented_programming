@@ -6,13 +6,30 @@
 using std::cout;
 using std::ostream;
 using std::common_type_t;
+using std::invalid_argument;
+using std::out_of_range;
 
 template <typename T>
 class Matrix
 {
 public:
-    Matrix();
-    Matrix(const int rows, const int cols);
+    Matrix() : Matrix<T>(0, 0) {}
+    Matrix(int rows, int cols) 
+        : rows(rows), cols(cols), data(nullptr) 
+    {
+        if (this->rows < 0 || this->cols < 0)
+            throw invalid_argument("Invalid matrix dimensions");
+
+        this->data = new T*[this->rows];
+        for (int row = 0; row < this->rows; ++row)
+        {
+            this->data[row] = new T[this->cols];
+            for (int col = 0; col < this->cols; ++col)
+            {
+                this->data[row][col] = T{};
+            }
+        }
+    }   
 
     Matrix(const Matrix<T> &other);
     Matrix(Matrix<T> &&other);
@@ -84,56 +101,30 @@ public:
     size_t Cols() const;
     Matrix<T> Transpose() const;
 
-    template <typename U>
-    Matrix<U> apply(U (*f)(T));
-    template <typename U, typename F>
-    Matrix<F> apply(F (*f)(T, U), Matrix<U> &other);
-
-    Matrix<T>& apply(T (*f)(T));
-    template <typename U>
-    Matrix<T>& apply(T (*f)(T, U), Matrix<U> &other);
-
 private:
     T **data;
     size_t rows, cols;
 
-    bool is_rows_cols_valid() const;
     template <typename U>
-    bool is_rows_cols_equal(const Matrix<U> &other) const;
-    void free_memory();
+    bool is_rows_cols_equal(const Matrix<U> &other) const {
+        if (this->rows == other.rows and this->cols == other.cols) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    void free_memory() {
+        if (!this->data) return;
+        for (int row = 0; row < this->rows; ++row) {
+            delete[] this->data[row];
+        }
+        delete[] this->data;
+        this->data = nullptr;
+        this->rows = 0;
+        this->cols = 0;
+    }
 };
-
-using namespace std;
-
-template <typename T>
-bool Matrix<T>::is_rows_cols_valid() const {
-    if (this->rows < 0 || this->cols < 0) {
-        throw invalid_argument("Invalid matrix dimensions");
-    }
-    return true;
-}
-
-template <typename T>
-template <typename U>
-bool Matrix<T>::is_rows_cols_equal(const Matrix<U> &other) const {
-    if (this->rows == other.rows and this->cols == other.cols) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-template<typename T>
-void Matrix<T>::free_memory() {
-    if (!this->data) return;
-    for (int row = 0; row < this->rows; ++row) {
-        delete[] this->data[row];
-    }
-    delete[] this->data;
-    this->data = nullptr;
-    this->rows = 0;
-    this->cols = 0;
-}
 
 template <typename T>
 Matrix<T>::Matrix() : Matrix<T>(0, 0) {}
@@ -141,7 +132,9 @@ Matrix<T>::Matrix() : Matrix<T>(0, 0) {}
 template <typename T>
 Matrix<T>::Matrix(int rows, int cols) 
     : rows(rows), cols(cols), data(nullptr) {
-    is_rows_cols_valid();
+    if (this->rows < 0 || this->cols < 0)
+        throw invalid_argument("Invalid matrix dimensions");
+
     this->data = new T*[this->rows];
     for (int row = 0; row < this->rows; ++row) {
         this->data[row] = new T[this->cols];
@@ -218,61 +211,6 @@ Matrix<T>::~Matrix() {
     free_memory();
 }
 
-template <typename T>
-template <typename U>
-Matrix<U> Matrix<T>::apply(U (*f)(T)) {
-    Matrix<U> result(this->rows, this->cols);
-    for (int row = 0; row < this->rows; ++row) {
-        for (int col = 0; col < this->cols; ++col) {
-            result[row][col] = f(this->data[row][col]);
-        }
-    }
-
-    return result;
-}
-
-template <typename T>
-template <typename U, typename F>
-Matrix<F> Matrix<T>::apply(F (*f)(T, U), Matrix<U> &other) {
-    if (!is_rows_cols_equal(other))
-        throw invalid_argument("Matrix dimensions do not match");
-
-    Matrix<F> result(this->rows, this->cols);
-    for (int row = 0; row < this->rows; ++row) {
-        for (int col = 0; col < this->cols; ++col) {
-            result[row][col] = f(this->data[row][col], other.data[row][col]);
-        }
-    }
-
-    return result;
-}
-
-template <typename T>
-Matrix<T>& Matrix<T>::apply(T (*f)(T)) {
-    for (int row = 0; row < this->rows; ++row) {
-        for (int col = 0; col < this->cols; ++col) {
-            this->data[row][col] = f(this->data[row][col]);
-        }
-    }
-
-    return *this;
-}
-
-template <typename T>
-template <typename U>
-Matrix<T>& Matrix<T>::apply(T (*f)(T, U), Matrix<U> &other) {
-    if (!is_rows_cols_equal(other))
-        throw invalid_argument("Matrix dimensions do not match");
-
-    for (int row = 0; row < this->rows; ++row) {
-        for (int col = 0; col < this->cols; ++col) {
-            this->data[row][col] = f(this->data[row][col], other.data[row][col]);
-        }
-    }
-
-    return *this;
-}
-
 template <typename U>
 Matrix<U> operator+(const Matrix<U> &m) {
     return Matrix<U>(m);
@@ -322,8 +260,9 @@ Matrix<common_type_t<T, U>> operator*(const Matrix<T>& m1, const Matrix<U>& m2) 
     Matrix<common_type_t<T, U>> result(m1.rows, m2.cols);
     for (int i = 0; i < m1.rows; ++i) {
         for (int j = 0; j < m2.cols; ++j) {
+            auto& sum = result.data[i][j];
             for (int k = 0; k < m1.cols; ++k) {
-                result.data[i][j] += m1.data[i][k] * m2.data[k][j];
+                sum += m1.data[i][k] * m2.data[k][j];
             }
         }
     }
@@ -530,6 +469,9 @@ Matrix<T> Matrix<T>::Transpose() const {
 }
 
 int main() {
+
+    using namespace std;
+
     cout << "=== Matrix Class Testing Program ===" << endl << endl;
     
     try {
