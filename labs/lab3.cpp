@@ -13,31 +13,104 @@ template <typename T>
 class Matrix
 {
 public:
-    Matrix() : Matrix<T>(0, 0) {}
-    Matrix(int rows, int cols) 
+    // Initialization
+    Matrix(size_t rows = 0, size_t cols = 0) 
         : rows(rows), cols(cols), data(nullptr) 
     {
-        if (this->rows < 0 || this->cols < 0)
-            throw invalid_argument("Invalid matrix dimensions");
-
-        this->data = new T*[this->rows];
-        for (int row = 0; row < this->rows; ++row)
-        {
-            this->data[row] = new T[this->cols];
-            for (int col = 0; col < this->cols; ++col)
-            {
-                this->data[row][col] = T{};
-            }
-        }
+        if (rows > 0 && cols > 0)
+            allocate(rows, cols);
     }   
 
-    Matrix(const Matrix<T> &other);
-    Matrix(Matrix<T> &&other);
-    Matrix<T>& operator=(const Matrix<T> &other);
-    Matrix<T>& operator=(Matrix<T> &&other);
+    // Rule of five
+    Matrix(const Matrix<T> &other) 
+        : rows(other.rows), cols(other.cols) 
+    {
+        if (other.rows > 0 && other.cols > 0) {
+            allocate(other.rows, other.cols);
+            for (size_t row = 0; row < this->rows; ++row) 
+            {
+                for (size_t col = 0; col < this->cols; ++col) 
+                {
+                    this->data[row][col] = other.data[row][col];
+                }
+            }
+        }
+    }
 
-    ~Matrix();
+    Matrix(Matrix<T> &&other) 
+        : rows(other.rows), cols(other.cols), data(other.data) 
+    { 
+        other.data = nullptr;
+        other.rows = 0;
+        other.cols = 0;
+    }
 
+    Matrix<T>& operator=(const Matrix<T>& other)
+    {
+        if (this == &other)
+            return *this;
+        
+        if (!is_rows_cols_equal(other)) 
+        {
+            free_memory();
+            allocate(other.rows, other.cols);
+        }
+
+        for (size_t row = 0; row < this->rows; ++row) 
+        {
+            for (size_t col = 0; col < this->cols; ++col) 
+            {
+                this->data[row][col] = other.data[row][col];
+            }
+        }
+
+        return *this;
+    }
+
+    template<typename U>
+    Matrix<T>& operator=(const Matrix<U>& other)
+    {
+        if (!is_rows_cols_equal(other)) 
+        {
+            free_memory();
+            allocate(other.rows, other.cols);
+        }
+
+        for (size_t row = 0; row < this->rows; ++row) 
+        {
+            for (size_t col = 0; col < this->cols; ++col) 
+            {
+                this->data[row][col] = other.data[row][col];
+            }
+        }
+
+        return *this;
+    }
+
+    Matrix<T>& operator=(Matrix<T> &&other) 
+    {
+        if (this == &other)
+            return *this;
+        
+        free_memory();
+            
+        this->rows = other.rows;
+        this->cols = other.cols;
+        this->data = other.data;
+
+        other.data = nullptr;
+        other.rows = 0;
+        other.cols = 0;
+
+        return *this;
+    };
+
+    ~Matrix() 
+    {
+        free_memory();
+    }
+
+    // add, sub and mul
     template <typename U>
     friend Matrix<U> operator+(const Matrix<U> &m);
     template <typename U>
@@ -64,26 +137,135 @@ public:
     template <typename U>
     friend Matrix<common_type_t<T, U>> operator*(const Matrix<T> &m, const U &scalar);
 
+    // Logistic
     template <typename U>
-    bool operator==(const Matrix<U> &other) const;
+    bool operator==(const Matrix<U> &other) const 
+    {
+        if (!is_rows_cols_equal(other))
+            return false;
+
+        for (size_t row = 0; row < this->rows; ++row) 
+        {
+            for (size_t col = 0; col < this->cols; ++col) 
+            {
+                if (this->data[row][col] != other.data[row][col]) return false;
+            }
+        }
+        return true;
+    }
+
     template <typename U>
-    bool operator!=(const Matrix<U> &other) const;
+    bool operator!=(const Matrix<U> &other) const 
+    {
+        return !(*this == other);
+    }
 
-    void operator++();
-    void operator++(int);
-    void operator--();
-    void operator--(int);
+    // Resizing
+    void operator++() 
+    {
+        Matrix<T> new_matrix = Matrix<T>(this->rows + 1, this->cols + 1);
+        for (size_t row = 0; row < this->rows; ++row) 
+        {
+            for (size_t col = 0; col < this->cols; ++col) 
+            {
+                new_matrix.data[row + 1][col + 1] = this->data[row][col];
+            }
+        }
+        *this = new_matrix;
+    }
 
+    void operator++(int) 
+    {
+        Matrix<T> new_matrix = Matrix<T>(this->rows + 1, this->cols + 1);
+        for (size_t row = 0; row < this->rows; ++row) 
+        {
+            for (size_t col = 0; col < this->cols; ++col) 
+            {
+                new_matrix.data[row][col] = this->data[row][col];
+            }
+        }
+        *this = new_matrix;
+    }
+
+    void operator--() 
+    {
+        if (this->rows == 0 || this->cols == 0)
+            throw invalid_argument("Matrix dimensions is too low");
+        
+        Matrix<T> new_matrix = Matrix<T>(this->rows - 1, this->cols - 1);
+        for (size_t row = 0; row < this->rows - 1; ++row) 
+        {
+            for (size_t col = 0; col < this->cols - 1; ++col) 
+            {
+                new_matrix.data[row][col] = this->data[row + 1][col + 1];
+            }
+        }
+        *this = new_matrix;
+    }
+
+    void operator--(int) {
+        if (this->rows == 0 || this->cols == 0)
+            throw invalid_argument("Matrix dimensions is too low");
+
+        Matrix<T> new_matrix = Matrix<T>(this->rows - 1, this->cols - 1);
+        for (size_t row = 0; row < this->rows - 1; ++row) 
+        {
+            for (size_t col = 0; col < this->cols - 1; ++col) 
+            {
+                new_matrix.data[row][col] = this->data[row][col];
+            }
+        }
+        *this = new_matrix;
+    }
+
+    // Printing
     template <typename U>
     friend ostream& operator<<(ostream& os, const Matrix<U>& matrix);
     template <typename U>
     friend ostream& operator>>(ostream& os, Matrix<U>& matrix);
 
-    T* operator[](const int row) const;
-    T& operator()(const int row, const int col) const;
+    // Indexing
+    T* operator[](const int row) const 
+    {
+        if (row < 0 || row >= this->rows)
+            throw out_of_range("Index out of range");
 
-    Matrix operator^(const int n) const;
+        return this->data[row];
+    }
 
+    T& operator()(const int row, const int col) const {
+        if (row < 0 || row >= this->rows || col < 0 || col >= this->cols)
+            throw out_of_range("Index out of range");
+
+        return this->data[row][col];
+    }
+
+    Matrix operator^(const int n) const {
+        if (n < 0)
+            throw invalid_argument("Power must be non-negative");
+        if (this->rows != this->cols)
+            throw invalid_argument("Matrix must be square");
+        
+        if (n == 0) {
+            Matrix<T> identity(this->rows, this->cols);
+            for (int i = 0; i < this->rows; ++i) {
+                identity.data[i][i] = T{1};
+            }
+            return identity;
+        }
+        if (n == 1) {
+            return *this;
+        }
+        
+        Matrix<T> result = *this;
+        for (int i = 1; i < n; ++i) 
+        {
+            result = result * (*this);
+        }
+        return result;
+    }
+
+    // add, sub and mul in a brand-new way
     template <typename U>
     void operator+=(const Matrix<U> &other);
     template <typename U>
@@ -97,16 +279,33 @@ public:
     template <typename U>
     void operator*=(const U &value);
 
-    size_t Rows() const;
-    size_t Cols() const;
-    Matrix<T> Transpose() const;
+    //Sume other stuff
+    size_t Rows() const {
+        return this->rows;
+    }
+    size_t Cols() const {
+        return this->cols;
+    }
+    Matrix<T> Transpose() const 
+    {
+    Matrix<T> transposed = Matrix<T>(this->cols, this->rows);
+        for (size_t row = 0; row < this->rows; ++row) 
+        {
+            for (size_t col = 0; col < this->cols; ++col) 
+            {
+                transposed.data[col][row] = this->data[row][col];
+            }
+        }
+        return transposed;
+    }
 
 private:
     T **data;
     size_t rows, cols;
 
     template <typename U>
-    bool is_rows_cols_equal(const Matrix<U> &other) const {
+    bool is_rows_cols_equal(const Matrix<U> &other) const 
+    {
         if (this->rows == other.rows and this->cols == other.cols) {
             return true;
         } else {
@@ -116,7 +315,8 @@ private:
 
     void free_memory() {
         if (!this->data) return;
-        for (int row = 0; row < this->rows; ++row) {
+        for (size_t row = 0; row < this->rows; ++row) 
+        {
             delete[] this->data[row];
         }
         delete[] this->data;
@@ -124,234 +324,23 @@ private:
         this->rows = 0;
         this->cols = 0;
     }
+
+    void allocate(size_t rows, size_t cols) {
+        this->rows = rows;
+        this->cols = cols;
+        this->data = new T*[rows];
+        for (size_t row = 0; row < rows; ++row)
+            this->data[row] = new T[cols]{};
+    }
 };
 
-template <typename T>
-Matrix<T>::Matrix() : Matrix<T>(0, 0) {}
-
-template <typename T>
-Matrix<T>::Matrix(int rows, int cols) 
-    : rows(rows), cols(cols), data(nullptr) {
-    if (this->rows < 0 || this->cols < 0)
-        throw invalid_argument("Invalid matrix dimensions");
-
-    this->data = new T*[this->rows];
-    for (int row = 0; row < this->rows; ++row) {
-        this->data[row] = new T[this->cols];
-        for (int col = 0; col < this->cols; ++col) {
-            this->data[row][col] = T{};
-        }
-    }
-}
-
-template <typename T>
-Matrix<T>::Matrix(const Matrix<T> &other) 
-    : rows(other.rows), cols(other.cols) {
-    this->data = new T*[this->rows];
-    for (int row = 0; row < this->rows; ++row) {
-        this->data[row] = new T[this->cols];
-        for (int col = 0; col < this->cols; ++col) {
-            this->data[row][col] = other.data[row][col];
-        }
-    }
-}
-
-template <typename T>
-Matrix<T>::Matrix(Matrix<T> &&other) 
-    : rows(other.rows), cols(other.cols), data(other.data) { 
-    other.data = nullptr;
-    other.rows = 0;
-    other.cols = 0;
-}
-
-template <typename T>
-Matrix<T>& Matrix<T>::operator=(const Matrix<T>& other) {
-    if (this == &other)
-        return *this;
-    
-    if (!is_rows_cols_equal(other)) {
-        free_memory();
-        this->rows = other.rows;
-        this->cols = other.cols;
-        this->data = new T*[this->rows];
-        for (int row = 0; row < this->rows; ++row) {
-            this->data[row] = new T[this->cols];
-        }
-    }
-
-    for (int row = 0; row < this->rows; ++row) {
-        for (int col = 0; col < this->cols; ++col) {
-            this->data[row][col] = other.data[row][col];
-        }
-    }
-
-    return *this;
-}
-
-template <typename T>
-Matrix<T>& Matrix<T>::operator=(Matrix<T> &&other) {
-    if (this == &other)
-        return *this;
-    
-    free_memory();
-        
-    this->rows = other.rows;
-    this->cols = other.cols;
-    this->data = other.data;
-
-    other.data = nullptr;
-    other.rows = 0;
-    other.cols = 0;
-
-    return *this;
-}
-
-template <typename T>
-Matrix<T>::~Matrix() {
-    free_memory();
-}
-
 template <typename U>
-Matrix<U> operator+(const Matrix<U> &m) {
-    return Matrix<U>(m);
-}
-
-template <typename U>
-Matrix<U> operator-(const Matrix<U> &m) {
-    return Matrix<U>(m).apply([](U x) { return -x; });
-}
-
-
-template <typename T, typename U>
-Matrix<common_type_t<T, U>> operator+(const Matrix<T>& m1, const Matrix<U>& m2) {
-    return Matrix<common_type_t<T, U>>(m1).apply(m2, [](T x, U y) { return x + y; });
-}
-
-template <typename T, typename U>
-Matrix<common_type_t<T, U>> operator+(const Matrix<T>& m, const U& scalar) {
-    return Matrix<common_type_t<T, U>>(m).apply([scalar](U x) { return x + scalar; });
-}
-
-template <typename T, typename U>
-Matrix<common_type_t<T, U>> operator+(const U& scalar, const Matrix<T>& m) {
-    return m + scalar;
-}
-
-template <typename T, typename U>
-Matrix<common_type_t<T, U>> operator-(const Matrix<T>& m1, const Matrix<U>& m2) {
-    return Matrix<common_type_t<T, U>>(m1).apply(m2, [](T x, U y) { return x - y; });
-}
-
-template <typename T, typename U>
-Matrix<common_type_t<T, U>> operator-(const Matrix<T>& m, const U& scalar) {
-    return Matrix<common_type_t<T, U>>(m).apply([scalar](U x) { return x - scalar; });
-}
-
-template <typename T, typename U>
-Matrix<common_type_t<T, U>> operator-(const U& scalar, const Matrix<T>& m) {
-    return Matrix<common_type_t<T, U>>(m).apply([scalar](U x) { return scalar - x; });
-}
-
-template <typename T, typename U>
-Matrix<common_type_t<T, U>> operator*(const Matrix<T>& m1, const Matrix<U>& m2) {
-    if (m1.cols != m2.rows)
-        throw invalid_argument("Matrix dimensions do not match for multiplication");
-
-    Matrix<common_type_t<T, U>> result(m1.rows, m2.cols);
-    for (int i = 0; i < m1.rows; ++i) {
-        for (int j = 0; j < m2.cols; ++j) {
-            auto& sum = result.data[i][j];
-            for (int k = 0; k < m1.cols; ++k) {
-                sum += m1.data[i][k] * m2.data[k][j];
-            }
-        }
-    }
-    return result;
-}
-
-template <typename T, typename U>
-Matrix<common_type_t<T, U>> operator*(const Matrix<T>& m, const U& scalar) {
-    return Matrix<common_type_t<T, U>>(m).apply([scalar](U x) { return x * scalar; });
-}
-
-template <typename T, typename U>
-Matrix<common_type_t<T, U>> operator*(const U& scalar, const Matrix<T>& m) {
-    return m * scalar;
-}
-
-template <typename T>
-template <typename U>
-bool Matrix<T>::operator==(const Matrix<U> &other) const {
-    if (!is_rows_cols_equal(other)) return false;
-
-    for (int row = 0; row < this->rows; ++row) {
-        for (int col = 0; col < this->cols; ++col) {
-            if (this->data[row][col] != other.data[row][col]) return false;
-        }
-    }
-    return true;
-}
-
-template <typename T>
-template <typename U>
-bool Matrix<T>::operator!=(const Matrix<U> &other) const {
-    return !(*this == other);
-}
-
-template <typename T>
-void Matrix<T>::operator++() {
-    Matrix<T> new_matrix = Matrix<T>(this->rows + 1, this->cols + 1);
-    for (int row = 0; row < this->rows; ++row) {
-        for (int col = 0; col < this->cols; ++col) {
-            new_matrix.data[row + 1][col + 1] = this->data[row][col];
-        }
-    }
-    *this = new_matrix;
-}
-
-template <typename T>
-void Matrix<T>::operator++(int) {
-    Matrix<T> new_matrix = Matrix<T>(this->rows + 1, this->cols + 1);
-    for (int row = 0; row < this->rows; ++row) {
-        for (int col = 0; col < this->cols; ++col) {
-            new_matrix.data[row][col] = this->data[row][col];
-        }
-    }
-    *this = new_matrix;
-}
-
-template <typename T>
-void Matrix<T>::operator--() {
-    if (this->rows == 0 || this->cols == 0) {
-        throw invalid_argument("Matrix dimensions is too low");
-    }
-    Matrix<T> new_matrix = Matrix<T>(this->rows - 1, this->cols - 1);
-    for (int row = 0; row < this->rows - 1; ++row) {
-        for (int col = 0; col < this->cols - 1; ++col) {
-            new_matrix.data[row][col] = this->data[row + 1][col + 1];
-        }
-    }
-    *this = new_matrix;
-}
-
-template <typename T>
-void Matrix<T>::operator--(int) {
-    if (this->rows == 0 || this->cols == 0) {
-        throw invalid_argument("Matrix dimensions is too low");
-    }
-    Matrix<T> new_matrix = Matrix<T>(this->rows - 1, this->cols - 1);
-    for (int row = 0; row < this->rows - 1; ++row) {
-        for (int col = 0; col < this->cols - 1; ++col) {
-            new_matrix.data[row][col] = this->data[row][col];
-        }
-    }
-    *this = new_matrix;
-}
-
-template <typename U>
-ostream& operator<<(ostream& os, const Matrix<U>& matrix) {
-    for (int row = 0; row < matrix.rows; ++row) {
-        for (int col = 0; col < matrix.cols; ++col) {
+ostream& operator<<(ostream& os, const Matrix<U>& matrix) 
+{
+    for (int row = 0; row < matrix.rows; ++row) 
+    {
+        for (int col = 0; col < matrix.cols; ++col) 
+        {
             os << matrix.data[row][col] << " ";
         }
         os << "\n";
@@ -360,112 +349,17 @@ ostream& operator<<(ostream& os, const Matrix<U>& matrix) {
 }
 
 template <typename U>
-ostream& operator>>(ostream& os, Matrix<U>& matrix) {
+ostream& operator>>(ostream& os, Matrix<U>& matrix) 
+{
     os << matrix.rows << " " << matrix.cols << "\n";
-    for (int row = 0; row < matrix.rows; ++row) {
-        for (int col = 0; col < matrix.cols; ++col) {
+    for (size_t row = 0; row < matrix.rows; ++row) 
+    {
+        for (size_t col = 0; col < matrix.cols; ++col) 
+        {
             os << matrix.data[row][col] << " ";
         }
     }
     return os;
-}
-
-template <typename T>
-T* Matrix<T>::operator[](const int row) const {
-    if (row < 0 || row >= this->rows)
-        throw out_of_range("Index out of range");
-
-    return this->data[row];
-}
-
-template <typename T>
-T& Matrix<T>::operator()(const int row, const int col) const {
-    if (row < 0 || row >= this->rows || col < 0 || col >= this->cols)
-        throw out_of_range("Index out of range");
-
-    return this->data[row][col];
-}
-
-template <typename T>
-Matrix<T> Matrix<T>::operator^(const int n) const {
-    if (n < 0)
-        throw invalid_argument("Power must be non-negative");
-    if (this->rows != this->cols)
-        throw invalid_argument("Matrix must be square");
-    
-    if (n == 0) {
-        Matrix<T> identity(this->rows, this->cols);
-        for (int i = 0; i < this->rows; ++i) {
-            identity.data[i][i] = T{1};
-        }
-        return identity;
-    }
-    if (n == 1) {
-        return *this;
-    }
-    
-    Matrix<T> result = *this;
-    for (int i = 1; i < n; ++i) {
-        result = result * (*this);
-    }
-    return result;
-}
-
-template <typename T>
-template <typename U>
-void Matrix<T>::operator+=(const Matrix<U> &other) {
-    *this = *this + other;
-}
-
-template <typename T>
-template <typename U>
-void Matrix<T>::operator+=(const U &value) {
-    *this = *this + value;
-}
-
-template <typename T>
-template <typename U>
-void Matrix<T>::operator-=(const Matrix<U> &other) {
-    *this = *this - other;
-}
-
-template <typename T>
-template <typename U>
-void Matrix<T>::operator-=(const U &value) {
-    *this = *this - value;
-}
-
-template <typename T>
-template <typename U>
-void Matrix<T>::operator*=(const Matrix<U> &other) {
-    *this = *this * other;
-}
-
-template <typename T>
-template <typename U>
-void Matrix<T>::operator*=(const U &value) {
-    *this = *this * value;
-}
-
-template <typename T>
-size_t Matrix<T>::Rows() const {
-    return this->rows;
-}
-
-template <typename T>
-size_t Matrix<T>::Cols() const {
-    return this->cols;
-}
-
-template <typename T>
-Matrix<T> Matrix<T>::Transpose() const {
-    Matrix<T> transposed = Matrix<T>(this->cols, this->rows);
-    for (int row = 0; row < this->rows; ++row) {
-        for (int col = 0; col < this->cols; ++col) {
-            transposed.data[col][row] = this->data[row][col];
-        }
-    }
-    return transposed;
 }
 
 int main() {
