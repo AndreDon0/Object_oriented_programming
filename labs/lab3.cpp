@@ -766,6 +766,17 @@ int lab3::main() {
             cout << "Caught expected exception: " << e.what() << endl;
         }
         
+        // Test 17: Memory Leak Test
+        cout << "Test 17: Memory Leak Test" << endl;
+        {
+            Matrix<int> temp(1000, 1000);
+            for (int i = 0; i < 100; ++i) {
+                Matrix<int> copy = temp;
+                Matrix<int> moved = std::move(copy);
+            }
+        }
+        cout << "Large matrix operations completed" << endl << endl;
+        
         cout << endl << "=== All tests completed successfully! ===" << endl;
         
     } catch (const std::exception& e) {
