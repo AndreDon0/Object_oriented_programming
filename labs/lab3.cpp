@@ -3,6 +3,9 @@
 #include <format>
 #include <type_traits>
 
+
+namespace lab3
+{
 using std::cout;
 using std::ostream;
 using std::common_type_t;
@@ -117,6 +120,13 @@ public:
     friend Matrix<U> operator-(const Matrix<U> &m);
 
     template <typename U>
+    friend Matrix<U> operator+(const Matrix<U> &m1, const Matrix<U> &m2);
+    template <typename U>
+    friend Matrix<U> operator+(const U &scalar, const Matrix<U> &m);
+    template <typename U>
+    friend Matrix<U> operator+(const Matrix<U> &m, const U &scalar);
+
+    template <typename U>
     friend Matrix<common_type_t<T, U>> operator+(const Matrix<T> &m1, const Matrix<U> &m2);
     template <typename U>
     friend Matrix<common_type_t<T, U>> operator+(const U &scalar, const Matrix<T> &m);
@@ -124,11 +134,25 @@ public:
     friend Matrix<common_type_t<T, U>> operator+(const Matrix<T> &m, const U &scalar);
 
     template <typename U>
+    friend Matrix<U> operator-(const Matrix<U> &m1, const Matrix<U> &m2);
+    template <typename U>
+    friend Matrix<U> operator-(const U &scalar, const Matrix<U> &m);
+    template <typename U>
+    friend Matrix<U> operator-(const Matrix<U> &m, const U &scalar);
+
+    template <typename U>
     friend Matrix<common_type_t<T, U>> operator-(const Matrix<T> &m1, const Matrix<U> &m2);
     template <typename U>
     friend Matrix<common_type_t<T, U>> operator-(const U &scalar, const Matrix<T> &m);
     template <typename U>
     friend Matrix<common_type_t<T, U>> operator-(const Matrix<T> &m, const U &scalar);
+
+    template <typename U>
+    friend Matrix<U> operator*(const Matrix<U> &m1, const Matrix<U> &m2);
+    template <typename U>
+    friend Matrix<U> operator*(const U &scalar, const Matrix<U> &m);
+    template <typename U>
+    friend Matrix<U> operator*(const Matrix<U> &m, const U &scalar);
 
     template <typename U>
     friend Matrix<common_type_t<T, U>> operator*(const Matrix<T> &m1, const Matrix<U> &m2);
@@ -362,9 +386,12 @@ ostream& operator>>(ostream& os, Matrix<U>& matrix)
     return os;
 }
 
-int main() {
+int main();
+}
+int lab3::main() {
 
-    using namespace std;
+    using std::cout;
+    using std::endl;
 
     cout << "=== Matrix Class Testing Program ===" << endl << endl;
     
@@ -585,4 +612,8 @@ int main() {
     }
     
     return 0;
+}
+
+int main() {
+    return lab3::main();
 }
