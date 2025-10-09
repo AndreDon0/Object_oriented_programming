@@ -70,26 +70,6 @@ public:
         return *this;
     }
 
-    template<typename U>
-    Matrix<T>& operator=(const Matrix<U>& other)
-    {
-        if (!is_rows_cols_equal(other)) 
-        {
-            free_memory();
-            allocate(other.rows, other.cols);
-        }
-
-        for (size_t row = 0; row < this->rows; ++row) 
-        {
-            for (size_t col = 0; col < this->cols; ++col) 
-            {
-                this->data[row][col] = other.data[row][col];
-            }
-        }
-
-        return *this;
-    }
-
     Matrix<T>& operator=(Matrix<T> &&other) 
     {
         if (this == &other)
@@ -119,26 +99,26 @@ public:
     template <typename U>
     friend Matrix<U> operator-(const Matrix<U> &m);
 
-    template <typename U>
-    friend Matrix<U> operator+(const Matrix<U> &m1, const Matrix<U> &m2);
-    template <typename U>
-    friend Matrix<U> operator+(const U &scalar, const Matrix<U> &m);
-    template <typename U>
-    friend Matrix<U> operator+(const Matrix<U> &m, const U &scalar);
+    template <typename U, typename V>
+    friend Matrix<common_type_t<U, V>> operator+(const Matrix<U> &m1, const Matrix<V> &m2);
+    template <typename U, typename V>
+    friend Matrix<common_type_t<U, V>> operator+(const U &scalar, const Matrix<V> &m);
+    template <typename U, typename V>
+    friend Matrix<common_type_t<U, V>> operator+(const Matrix<U> &m, const V &scalar);
 
-    template <typename U>
-    friend Matrix<U> operator-(const Matrix<U> &m1, const Matrix<U> &m2);
-    template <typename U>
-    friend Matrix<U> operator-(const U &scalar, const Matrix<U> &m);
-    template <typename U>
-    friend Matrix<U> operator-(const Matrix<U> &m, const U &scalar);
+    template <typename U, typename V>
+    friend Matrix<common_type_t<U, V>> operator-(const Matrix<U> &m1, const Matrix<V> &m2);
+    template <typename U, typename V>
+    friend Matrix<common_type_t<U, V>> operator-(const U &scalar, const Matrix<V> &m);
+    template <typename U, typename V>
+    friend Matrix<common_type_t<U, V>> operator-(const Matrix<U> &m, const V &scalar);
 
-    template <typename U>
-    friend Matrix<U> operator*(const Matrix<U> &m1, const Matrix<U> &m2);
-    template <typename U>
-    friend Matrix<U> operator*(const U &scalar, const Matrix<U> &m);
-    template <typename U>
-    friend Matrix<U> operator*(const Matrix<U> &m, const U &scalar);
+    template <typename U, typename V>
+    friend Matrix<common_type_t<U, V>> operator*(const Matrix<U> &m1, const Matrix<V> &m2);
+    template <typename U, typename V>
+    friend Matrix<common_type_t<U, V>> operator*(const U &scalar, const Matrix<V> &m);
+    template <typename U, typename V>
+    friend Matrix<common_type_t<U, V>> operator*(const Matrix<U> &m, const V &scalar);
 
     // Logistic
     template <typename U>
@@ -356,69 +336,74 @@ Matrix<U> operator-(const Matrix<U> &m) {
 
 
 
-template <typename T>
-Matrix<T> operator+(const Matrix<T> &m1, const Matrix<T> &m2) {
-    if (!m1.is_rows_cols_equal(m2))
+template <typename T, typename U>
+Matrix<common_type_t<T, U>> operator+(const Matrix<T> &m1, const Matrix<U> &m2) {
+    if (m1.Rows() != m2.Rows() || m1.Cols() != m2.Cols())
         throw std::invalid_argument("Matrix dimensions must match");
     
-    Matrix<T> result(m1.rows, m1.cols);
-    for (size_t row = 0; row < m1.rows; ++row) {
-        for (size_t col = 0; col < m1.cols; ++col) {
-            result.data[row][col] = m1.data[row][col] + m2.data[row][col];
+    using ResultType = common_type_t<T, U>;
+    Matrix<ResultType> result(m1.Rows(), m1.Cols());
+    for (size_t row = 0; row < m1.Rows(); ++row) {
+        for (size_t col = 0; col < m1.Cols(); ++col) {
+            result[row][col] = m1[row][col] + m2[row][col];
         }
     }
     return result;
 }
 
-template <typename T>
-Matrix<T> operator+(const T &scalar, const Matrix<T> &m) {
-    Matrix<T> result(m.rows, m.cols);
-    for (size_t row = 0; row < m.rows; ++row) {
-        for (size_t col = 0; col < m.cols; ++col) {
-            result.data[row][col] = scalar + m.data[row][col];
+template <typename T, typename U>
+Matrix<common_type_t<T, U>> operator+(const T &scalar, const Matrix<U> &m) {
+    using ResultType = common_type_t<T, U>;
+    Matrix<ResultType> result(m.Rows(), m.Cols());
+    for (size_t row = 0; row < m.Rows(); ++row) {
+        for (size_t col = 0; col < m.Cols(); ++col) {
+            result[row][col] = scalar + m[row][col];
         }
     }
     return result;
 }
 
-template <typename T>
-Matrix<T> operator+(const Matrix<T> &m, const T &scalar) {
+template <typename T, typename U>
+Matrix<common_type_t<T, U>> operator+(const Matrix<T> &m, const U &scalar) {
     return scalar + m;
 }
 
 
 
-template <typename T>
-Matrix<T> operator-(const Matrix<T> &m1, const Matrix<T> &m2) {
-    if (!m1.is_rows_cols_equal(m2))
+template <typename T, typename U>
+Matrix<common_type_t<T, U>> operator-(const Matrix<T> &m1, const Matrix<U> &m2) {
+    if (m1.Rows() != m2.Rows() || m1.Cols() != m2.Cols())
         throw std::invalid_argument("Matrix dimensions must match");
     
-    Matrix<T> result(m1.rows, m1.cols);
-    for (size_t row = 0; row < m1.rows; ++row) {
-        for (size_t col = 0; col < m1.cols; ++col) {
-            result.data[row][col] = m1.data[row][col] - m2.data[row][col];
+    using ResultType = common_type_t<T, U>;
+    Matrix<ResultType> result(m1.Rows(), m1.Cols());
+    for (size_t row = 0; row < m1.Rows(); ++row) {
+        for (size_t col = 0; col < m1.Cols(); ++col) {
+            result[row][col] = m1[row][col] - m2[row][col];
         }
     }
     return result;
 }
 
-template <typename T>
-Matrix<T> operator-(const T &scalar, const Matrix<T> &m) {
-    Matrix<T> result(m.rows, m.cols);
-    for (size_t row = 0; row < m.rows; ++row) {
-        for (size_t col = 0; col < m.cols; ++col) {
-            result.data[row][col] = scalar - m.data[row][col];
+template <typename T, typename U>
+Matrix<common_type_t<T, U>> operator-(const T &scalar, const Matrix<U> &m) {
+    using ResultType = common_type_t<T, U>;
+    Matrix<ResultType> result(m.Rows(), m.Cols());
+    for (size_t row = 0; row < m.Rows(); ++row) {
+        for (size_t col = 0; col < m.Cols(); ++col) {
+            result[row][col] = scalar - m[row][col];
         }
     }
     return result;
 }
 
-template <typename T>
-Matrix<T> operator-(const Matrix<T> &m, const T &scalar) {
-    Matrix<T> result(m.rows, m.cols);
-    for (size_t row = 0; row < m.rows; ++row) {
-        for (size_t col = 0; col < m.cols; ++col) {
-            result.data[row][col] = m.data[row][col] - scalar;
+template <typename T, typename U>
+Matrix<common_type_t<T, U>> operator-(const Matrix<T> &m, const U &scalar) {
+    using ResultType = common_type_t<T, U>;
+    Matrix<ResultType> result(m.Rows(), m.Cols());
+    for (size_t row = 0; row < m.Rows(); ++row) {
+        for (size_t col = 0; col < m.Cols(); ++col) {
+            result[row][col] = m[row][col] - scalar;
         }
     }
     return result;
@@ -426,35 +411,37 @@ Matrix<T> operator-(const Matrix<T> &m, const T &scalar) {
 
 
 
-template <typename T>
-Matrix<T> operator*(const Matrix<T> &m1, const Matrix<T> &m2) {
-    if (m1.cols != m2.rows)
+template <typename T, typename U>
+Matrix<common_type_t<T, U>> operator*(const Matrix<T> &m1, const Matrix<U> &m2) {
+    if (m1.Cols() != m2.Rows())
         throw std::invalid_argument("Matrix dimensions must match for multiplication");
     
-    Matrix<T> result(m1.rows, m2.cols);
-    for (size_t row = 0; row < m1.rows; ++row) {
-        for (size_t col = 0; col < m2.cols; ++col) {
-            for (size_t k = 0; k < m1.cols; ++k) {
-                result.data[row][col] += m1.data[row][k] * m2.data[k][col];
+    using ResultType = common_type_t<T, U>;
+    Matrix<ResultType> result(m1.Rows(), m2.Cols());
+    for (size_t row = 0; row < m1.Rows(); ++row) {
+        for (size_t col = 0; col < m2.Cols(); ++col) {
+            for (size_t k = 0; k < m1.Cols(); ++k) {
+                result[row][col] += m1[row][k] * m2[k][col];
             }
         }
     }
     return result;
 }
 
-template <typename T>
-Matrix<T> operator*(const T &scalar, const Matrix<T> &m) {
-    Matrix<T> result(m.rows, m.cols);
-    for (size_t row = 0; row < m.rows; ++row) {
-        for (size_t col = 0; col < m.cols; ++col) {
-            result.data[row][col] = scalar * m.data[row][col];
+template <typename T, typename U>
+Matrix<common_type_t<T, U>> operator*(const T &scalar, const Matrix<U> &m) {
+    using ResultType = common_type_t<T, U>;
+    Matrix<ResultType> result(m.Rows(), m.Cols());
+    for (size_t row = 0; row < m.Rows(); ++row) {
+        for (size_t col = 0; col < m.Cols(); ++col) {
+            result[row][col] = scalar * m[row][col];
         }
     }
     return result;
 }
 
-template <typename T>
-Matrix<T> operator*(const Matrix<T> &m, const T &scalar) {
+template <typename T, typename U>
+Matrix<common_type_t<T, U>> operator*(const Matrix<T> &m, const U &scalar) {
     return scalar * m;
 }
 
