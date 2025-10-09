@@ -147,11 +147,13 @@ public:
     void operator++() 
     {
         Matrix<T> new_matrix = Matrix<T>(this->rows + 1, this->cols + 1);
-        for (size_t row = 0; row < this->rows; ++row) 
-        {
-            for (size_t col = 0; col < this->cols; ++col) 
+        if (this->data) {
+            for (size_t row = 0; row < this->rows; ++row) 
             {
-                new_matrix.data[row + 1][col + 1] = this->data[row][col];
+                for (size_t col = 0; col < this->cols; ++col) 
+                {
+                    new_matrix.data[row + 1][col + 1] = this->data[row][col];
+                }
             }
         }
         *this = new_matrix;
@@ -310,11 +312,7 @@ private:
     template <typename U>
     bool is_rows_cols_equal(const Matrix<U> &other) const 
     {
-        if (this->rows == other.rows and this->cols == other.cols) {
-            return true;
-        } else {
-            return false;
-        }
+        return this->rows == other.rows && this->cols == other.cols;
     }
 
     void free_memory() {
@@ -346,12 +344,8 @@ Matrix<U> operator+(const Matrix<U> &m) {
 
 template <typename U>
 Matrix<U> operator-(const Matrix<U> &m) {
-    Matrix<U> result(m.rows, m.cols);
-    for (size_t row = 0; row < m.rows; ++row) {
-        for (size_t col = 0; col < m.cols; ++col) {
-            result.data[row][col] = -m.data[row][col];
-        }
-    }
+    Matrix<U> result = m;
+    result.apply([](auto a) { return -a; });
     return result;
 }
 
