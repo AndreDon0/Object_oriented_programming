@@ -282,6 +282,27 @@ public:
         return transposed;
     }
 
+    template <typename F>
+    void apply(F f) {
+        for (size_t row = 0; row < this->rows; ++row) 
+            for (size_t col = 0; col < this->cols; ++col) 
+                this->data[row][col] = f(this->data[row][col]);
+    }
+
+    template <typename F, typename U>
+    void apply(F f, U value) {
+        for (size_t row = 0; row < this->rows; ++row) 
+            for (size_t col = 0; col < this->cols; ++col) 
+                this->data[row][col] = f(this->data[row][col], value);
+    }
+
+    template <typename F, typename U>
+    void apply(F f, Matrix<U> m) {
+        for (size_t row = 0; row < this->rows; ++row) 
+            for (size_t col = 0; col < this->cols; ++col) 
+                this->data[row][col] = f(this->data[row][col], m[row][col]);
+    }
+
 private:
     T **data;
     size_t rows, cols;
@@ -340,26 +361,15 @@ template <typename T, typename U>
 Matrix<common_type_t<T, U>> operator+(const Matrix<T> &m1, const Matrix<U> &m2) {
     if (m1.Rows() != m2.Rows() || m1.Cols() != m2.Cols())
         throw std::invalid_argument("Matrix dimensions must match");
-    
-    using ResultType = common_type_t<T, U>;
-    Matrix<ResultType> result(m1.Rows(), m1.Cols());
-    for (size_t row = 0; row < m1.Rows(); ++row) {
-        for (size_t col = 0; col < m1.Cols(); ++col) {
-            result[row][col] = m1[row][col] + m2[row][col];
-        }
-    }
+    Matrix<common_type_t<T, U>> result = m1;
+    result.apply([](auto a, auto b) { return a + b; }, m2);
     return result;
 }
 
 template <typename T, typename U>
 Matrix<common_type_t<T, U>> operator+(const T &scalar, const Matrix<U> &m) {
-    using ResultType = common_type_t<T, U>;
-    Matrix<ResultType> result(m.Rows(), m.Cols());
-    for (size_t row = 0; row < m.Rows(); ++row) {
-        for (size_t col = 0; col < m.Cols(); ++col) {
-            result[row][col] = scalar + m[row][col];
-        }
-    }
+    Matrix<common_type_t<T, U>> result = m;
+    result.apply([scalar](auto a) { return scalar + a; });
     return result;
 }
 
@@ -374,38 +384,23 @@ template <typename T, typename U>
 Matrix<common_type_t<T, U>> operator-(const Matrix<T> &m1, const Matrix<U> &m2) {
     if (m1.Rows() != m2.Rows() || m1.Cols() != m2.Cols())
         throw std::invalid_argument("Matrix dimensions must match");
-    
-    using ResultType = common_type_t<T, U>;
-    Matrix<ResultType> result(m1.Rows(), m1.Cols());
-    for (size_t row = 0; row < m1.Rows(); ++row) {
-        for (size_t col = 0; col < m1.Cols(); ++col) {
-            result[row][col] = m1[row][col] - m2[row][col];
-        }
-    }
+    Matrix<common_type_t<T, U>> result = m1;
+    result.apply([](auto a, auto b) { return a - b; }, m2);
     return result;
 }
 
 template <typename T, typename U>
 Matrix<common_type_t<T, U>> operator-(const T &scalar, const Matrix<U> &m) {
-    using ResultType = common_type_t<T, U>;
-    Matrix<ResultType> result(m.Rows(), m.Cols());
-    for (size_t row = 0; row < m.Rows(); ++row) {
-        for (size_t col = 0; col < m.Cols(); ++col) {
-            result[row][col] = scalar - m[row][col];
-        }
-    }
+    Matrix<common_type_t<T, U>> result(m.Rows(), m.Cols());
+    result.apply([scalar, &m](auto) { return scalar; });
+    result.apply([](auto a, auto b) { return a - b; }, m);
     return result;
 }
 
 template <typename T, typename U>
 Matrix<common_type_t<T, U>> operator-(const Matrix<T> &m, const U &scalar) {
-    using ResultType = common_type_t<T, U>;
-    Matrix<ResultType> result(m.Rows(), m.Cols());
-    for (size_t row = 0; row < m.Rows(); ++row) {
-        for (size_t col = 0; col < m.Cols(); ++col) {
-            result[row][col] = m[row][col] - scalar;
-        }
-    }
+    Matrix<common_type_t<T, U>> result = m;
+    result.apply([scalar](auto a) { return a - scalar; });
     return result;
 }
 
@@ -430,13 +425,8 @@ Matrix<common_type_t<T, U>> operator*(const Matrix<T> &m1, const Matrix<U> &m2) 
 
 template <typename T, typename U>
 Matrix<common_type_t<T, U>> operator*(const T &scalar, const Matrix<U> &m) {
-    using ResultType = common_type_t<T, U>;
-    Matrix<ResultType> result(m.Rows(), m.Cols());
-    for (size_t row = 0; row < m.Rows(); ++row) {
-        for (size_t col = 0; col < m.Cols(); ++col) {
-            result[row][col] = scalar * m[row][col];
-        }
-    }
+    Matrix<common_type_t<T, U>> result = m;
+    result.apply([scalar](auto a) { return scalar * a; });
     return result;
 }
 
@@ -444,6 +434,8 @@ template <typename T, typename U>
 Matrix<common_type_t<T, U>> operator*(const Matrix<T> &m, const U &scalar) {
     return scalar * m;
 }
+
+
 
 template <typename U>
 ostream& operator<<(ostream& os, const Matrix<U>& matrix) 
@@ -473,27 +465,20 @@ ostream& operator>>(ostream& os, Matrix<U>& matrix)
     return os;
 }
 
+
+
 template <typename T>
 template <typename U>
 void Matrix<T>::operator+=(const Matrix<U> &other) {
     if (!is_rows_cols_equal(other))
         throw std::invalid_argument("Matrix dimensions must match");
-    
-    for (size_t row = 0; row < this->rows; ++row) {
-        for (size_t col = 0; col < this->cols; ++col) {
-            this->data[row][col] += other.data[row][col];
-        }
-    }
+    apply([](T a, U b) { return a + b; }, other);
 }
 
 template <typename T>
 template <typename U>
 void Matrix<T>::operator+=(const U &value) {
-    for (size_t row = 0; row < this->rows; ++row) {
-        for (size_t col = 0; col < this->cols; ++col) {
-            this->data[row][col] += value;
-        }
-    }
+    apply([](T a, U b) { return a + b; }, value);
 }
 
 template <typename T>
@@ -501,22 +486,13 @@ template <typename U>
 void Matrix<T>::operator-=(const Matrix<U> &other) {
     if (!is_rows_cols_equal(other))
         throw std::invalid_argument("Matrix dimensions must match");
-    
-    for (size_t row = 0; row < this->rows; ++row) {
-        for (size_t col = 0; col < this->cols; ++col) {
-            this->data[row][col] -= other.data[row][col];
-        }
-    }
+    apply([](T a, U b) { return a - b; }, other);
 }
 
 template <typename T>
 template <typename U>
 void Matrix<T>::operator-=(const U &value) {
-    for (size_t row = 0; row < this->rows; ++row) {
-        for (size_t col = 0; col < this->cols; ++col) {
-            this->data[row][col] -= value;
-        }
-    }
+    apply([](T a, U b) { return a - b; }, value);
 }
 
 template <typename T>
@@ -528,15 +504,14 @@ void Matrix<T>::operator*=(const Matrix<U> &other) {
 template <typename T>
 template <typename U>
 void Matrix<T>::operator*=(const U &value) {
-    for (size_t row = 0; row < this->rows; ++row) {
-        for (size_t col = 0; col < this->cols; ++col) {
-            this->data[row][col] *= value;
-        }
-    }
+    apply([](T a, U b) { return a * b; }, value);
 }
+
+
 
 int main();
 }
+
 int lab3::main() {
 
     using std::cout;
