@@ -218,7 +218,14 @@ public:
         return this->data[row];
     }
 
-    T& operator()(const int row, const int col) const {
+    T& operator()(const int row, const int col) {
+        if (row < 0 || row >= this->rows || col < 0 || col >= this->cols)
+            throw out_of_range("Index out of range");
+
+        return this->data[row][col];
+    }
+
+    const T& operator()(const int row, const int col) const {
         if (row < 0 || row >= this->rows || col < 0 || col >= this->cols)
             throw out_of_range("Index out of range");
 
