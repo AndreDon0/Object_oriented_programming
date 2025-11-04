@@ -2,25 +2,69 @@
 
 using std::cout;
 
-namespace lab4 {
-    int run();
-}
 
-class Five;
-class Four;
-class Three;
-class Two;
+class Three
+{
+public:
+    Three()
+    {
+        cout << "Three ";
+    }
+    ~Three()
+    {
+        cout << "Eight ";
+    }
+};
+
+class Four : public Three
+{
+public:
+    Four()
+    {
+        cout << "Four ";
+    }
+    ~Four()
+    {
+        cout << "Seven ";
+    }
+};
+
+class Five
+{
+public:
+    Five()
+    {
+        cout << "One ";
+    }
+    ~Five()
+    {
+        cout << "Ten ";
+    }
+};
+
+class Two : public Five
+{
+public:
+    Two()
+    {
+        cout << "Two ";
+    }
+    ~Two()
+    {
+        cout << "Nine ";
+    }
+};
 
 class One : public Two
 {
 public:
     One() : five_ptr(this), three_ref(four)
     {
-        cout << "[WORD] ";
+        cout << "Five ";
     }
     ~One()
     {
-        cout << "[WORD] ";
+        cout << "Six ";
     }
 private:
     Four four;
@@ -29,11 +73,6 @@ private:
 };
 
 
-int lab4::run() {
-    One one;
-    return 0;
-}
-
 int main() {
-    return lab4::run();
+    One one;
 }
