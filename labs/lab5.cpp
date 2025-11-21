@@ -11,12 +11,14 @@ public:
     virtual unsigned int getAmount() const = 0;
     virtual void addAmount(unsigned int amt) = 0;
     virtual void subtractAmount(unsigned int amt) = 0;
+protected:
+    std::string name;
 };
 
-template<class T, const char* elementName, unsigned int InitialAmount>
+template<const char* elementName, unsigned int InitialAmount>
 class BasicElement : public Element {
 public:
-    BasicElement() { }
+    BasicElement() { name = elementName; }
     bool isBasic() const override { return basic; }
     unsigned int getAmount() const override { return amount; }
     void addAmount(unsigned int amt) override { amount += amt; }
@@ -28,13 +30,13 @@ private:
     static unsigned int amount;
     static constexpr bool basic = true;
 };
-template<class T, const char* elementName, unsigned int InitialAmount>
-unsigned int BasicElement<T, elementName, InitialAmount>::amount = InitialAmount;
+template<const char* elementName, unsigned int InitialAmount>
+unsigned int BasicElement<elementName, InitialAmount>::amount = InitialAmount;
 
-template<class T, const char* elementName>
+template<const char* elementName>
 class CompoundElement : public Element {
 public:
-    CompoundElement() { }
+    CompoundElement() { name = elementName; }
     bool isBasic() const override { return basic; }
     unsigned int getAmount() const override { return amount; }
     void addAmount(unsigned int amt) override { amount += amt; }
@@ -46,8 +48,8 @@ private:
     static unsigned int amount;
     static constexpr bool basic = false;
 };
-template<class T, const char* elementName>
-unsigned int CompoundElement<T, elementName>::amount = 0;
+template<const char* elementName>
+unsigned int CompoundElement<elementName>::amount = 0;
 
 
 std::map<std::type_index, Element*> discoveredElements;
@@ -62,14 +64,10 @@ Element* operator+(Element& e1, Element& e2) {
     for (auto& r : recipes) {
         if ((r.first.first == a && r.first.second == b) || 
             (r.first.first == b && r.first.second == a)) {
-
             e1.subtractAmount(1);
             e2.subtractAmount(1);
-            
-            if (discoveredElements.count(r.second)) {
-                discoveredElements[r.second]->addAmount(1);
-                return discoveredElements[r.second];
-            }
+            discoveredElements[r.second]->addAmount(1);
+            return discoveredElements[r.second];
         }
     }
     return nullptr;
@@ -95,7 +93,7 @@ std::pair<Element*, Element*> operator-(Element& elem) {
     throw std::runtime_error("Cannot decompose basic element");
 }
 
-void RegisterRecipe(RecipeInput input, RecipeOutput output) {
+void registerRecipe(RecipeInput input, RecipeOutput output) {
     recipes.push_back({input, output});
 }
 
@@ -109,14 +107,14 @@ constexpr char MudName[] = "Mud";
 constexpr char LavaName[] = "Lava";
 constexpr char EnergyName[] = "Energy";
 
-class Fire final : public BasicElement<Fire, FireName, 50> {};
-class Water final : public BasicElement<Water, WaterName, 50> {};
-class Earth final : public BasicElement<Earth, EarthName, 50> {};
-class Air final : public BasicElement<Air, AirName, 50> {};
-class Steam final : public CompoundElement<Steam, SteamName> {};
-class Mud final : public CompoundElement<Mud, MudName> {};
-class Lava final : public CompoundElement<Lava, LavaName> {};
-class Energy final : public CompoundElement<Energy, EnergyName> {};
+class Fire final : public BasicElement<FireName, 50> {};
+class Water final : public BasicElement<WaterName, 50> {};
+class Earth final : public BasicElement<EarthName, 50> {};
+class Air final : public BasicElement<AirName, 50> {};
+class Steam final : public CompoundElement<SteamName> {};
+class Mud final : public CompoundElement<MudName> {};
+class Lava final : public CompoundElement<LavaName> {};
+class Energy final : public CompoundElement<EnergyName> {};
 
 int main() {
     discoveredElements[typeid(Fire)] = new Fire();
@@ -128,10 +126,10 @@ int main() {
     discoveredElements[typeid(Lava)] = new Lava();
     discoveredElements[typeid(Energy)] = new Energy();
     
-    RegisterRecipe({typeid(Fire), typeid(Water)}, typeid(Steam));
-    RegisterRecipe({typeid(Earth), typeid(Water)}, typeid(Mud));
-    RegisterRecipe({typeid(Fire), typeid(Earth)}, typeid(Lava));
-    RegisterRecipe({typeid(Air), typeid(Fire)}, typeid(Energy));
+    registerRecipe({typeid(Fire), typeid(Water)}, typeid(Steam));
+    registerRecipe({typeid(Earth), typeid(Water)}, typeid(Mud));
+    registerRecipe({typeid(Fire), typeid(Earth)}, typeid(Lava));
+    registerRecipe({typeid(Air), typeid(Fire)}, typeid(Energy));
     
     try {
         Fire& fire = *static_cast<Fire*>(discoveredElements[typeid(Fire)]);
@@ -146,9 +144,9 @@ int main() {
             std::cout << ", Steam: " << steam->getAmount() << std::endl;
         }
 
-        if (steam && steam->getAmount() > 0) {
-            auto [fire2, water2] = -*steam;
-            std::cout << "After decomposition - Fire: " << fire2->getAmount() << ", Water: " << water2->getAmount() << ", Steam: " << steam->getAmount() << std::endl;
+        if (steam && (steam->getAmount() > 0)) {
+            auto result = -(*steam);
+            std::cout << "After decomposition - Fire: " << result.first->getAmount() << ", Water: " << result.second->getAmount() << ", Steam: " << steam->getAmount() << std::endl;
         }
         
     } catch (const std::exception& e) {
