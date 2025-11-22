@@ -4,6 +4,7 @@
 #include <vector>
 #include <map>
 #include <functional>
+#include <optional>
 
 class Element {
 public:
@@ -12,6 +13,8 @@ public:
     virtual unsigned int getAmount() const = 0;
     virtual void addAmount(unsigned int amt) = 0;
     virtual void subtractAmount(unsigned int amt) = 0;
+    virtual std::string getName() const = 0;
+    virtual void setName(std::string newName) = 0;
 protected:
     std::string name;
 };
@@ -28,6 +31,8 @@ public:
         amount -= amt;
     }
     ~BasicElement() { amount++; }
+    void setName(std::string newName) override { name = newName; }
+    std::string getName() const override { return name; }
 private:
     static unsigned int amount;
     static constexpr bool basic = true;
@@ -43,6 +48,8 @@ public:
     unsigned int getAmount() const override { return 0; }
     void addAmount(unsigned int amt) override { }
     void subtractAmount(unsigned int amt) override { }
+    void setName(std::string newName) override { name = newName; }
+    std::string getName() const override { return name; }
 private:
     static constexpr bool basic = false;
 };
@@ -68,7 +75,7 @@ Element* operator+(Element& e1, Element& e2) {
     return nullptr;
 }
 
-std::pair<Element*, Element*> operator-(Element& elem) {
+std::optional<std::pair<Element*, Element*>> operator-(Element& elem) {
     if (!elem.isBasic()) {
         std::type_index compound = typeid(elem);
             
@@ -78,12 +85,12 @@ std::pair<Element*, Element*> operator-(Element& elem) {
                 
                 auto elem1 = factory[r.first.first]();
                 auto elem2 = factory[r.first.second]();
-                return {elem1, elem2};
+                return {{elem1, elem2}};
             }
         }
         throw std::runtime_error("Decomposition recipe not found");
     }
-    throw std::runtime_error("Cannot decompose basic element");
+    return std::nullopt;
 }
 
 void registerRecipe(RecipeInput input, RecipeOutput output) {
@@ -193,11 +200,14 @@ int main() {
     // Test decomposition
     std::cout << "=== Decomposing Steam ===\n";
     std::cout << "Steam amount before: " << steam->getAmount() << "\n";
-    auto [elem1, elem2] = -(*steam);
-    std::cout << "Steam amount after: " << steam->getAmount() << "\n";
-    std::cout << "Decomposed into two elements:\n";
-    std::cout << "Element 1 type: " << typeid(*elem1).name() << ", amount: " << elem1->getAmount() << "\n";
-    std::cout << "Element 2 type: " << typeid(*elem2).name() << ", amount: " << elem2->getAmount() << "\n\n";
+    auto result = -(*steam);
+    if (result) {
+        auto [elem1, elem2] = *result;
+        std::cout << "Steam amount after: " << steam->getAmount() << "\n";
+        std::cout << "Decomposed into two elements:\n";
+        std::cout << "Element 1 type: " << typeid(*elem1).name() << ", amount: " << elem1->getAmount() << "\n";
+        std::cout << "Element 2 type: " << typeid(*elem2).name() << ", amount: " << elem2->getAmount() << "\n\n";
+    }
 
     // Test invalid combination
     std::cout << "=== Testing invalid combination (Fire + Fire) ===\n";
@@ -209,10 +219,9 @@ int main() {
 
     // Test error handling: try to decompose basic element
     std::cout << "=== Testing decomposition of basic element ===\n";
-    try {
-        auto result = -fire;
-    } catch (const std::runtime_error& e) {
-        std::cout << "Caught expected error: " << e.what() << "\n\n";
+    auto basicResult = -fire;
+    if (!basicResult) {
+        std::cout << "Basic element cannot be decomposed - correctly returned nullopt\n\n";
     }
 
     // Test error handling: not enough resources
