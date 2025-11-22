@@ -3,6 +3,7 @@
 #include <typeindex>
 #include <vector>
 #include <map>
+#include <functional>
 
 class Element {
 public:
@@ -18,7 +19,7 @@ protected:
 template<const char* elementName, unsigned int InitialAmount>
 class BasicElement : public Element {
 public:
-    BasicElement() { name = elementName; }
+    BasicElement() { name = elementName; amount--; }
     bool isBasic() const override { return basic; }
     unsigned int getAmount() const override { return amount; }
     void addAmount(unsigned int amt) override { amount += amt; }
@@ -26,6 +27,7 @@ public:
         if (amt > amount) throw std::runtime_error("Not enough amount of " + std::string(elementName));
         amount -= amt;
     }
+    ~BasicElement() { amount++; }
 private:
     static unsigned int amount;
     static constexpr bool basic = true;
@@ -38,21 +40,15 @@ class CompoundElement : public Element {
 public:
     CompoundElement() { name = elementName; }
     bool isBasic() const override { return basic; }
-    unsigned int getAmount() const override { return amount; }
-    void addAmount(unsigned int amt) override { amount += amt; }
-    void subtractAmount(unsigned int amt) override { 
-        if (amt > amount) throw std::runtime_error("Not enough amount of " + std::string(elementName));
-        amount -= amt;
-    }
+    unsigned int getAmount() const override { return 0; }
+    void addAmount(unsigned int amt) override { }
+    void subtractAmount(unsigned int amt) override { }
 private:
-    static unsigned int amount;
     static constexpr bool basic = false;
 };
-template<const char* elementName>
-unsigned int CompoundElement<elementName>::amount = 0;
 
 
-std::map<std::type_index, Element*> discoveredElements;
+std::unordered_map<std::type_index, std::function<Element*()>> factory;
 using RecipeInput = std::pair<std::type_index, std::type_index>;
 using RecipeOutput = std::type_index;
 std::vector<std::pair<RecipeInput, RecipeOutput>> recipes;
@@ -64,10 +60,9 @@ Element* operator+(Element& e1, Element& e2) {
     for (auto& r : recipes) {
         if ((r.first.first == a && r.first.second == b) || 
             (r.first.first == b && r.first.second == a)) {
-            e1.subtractAmount(1);
-            e2.subtractAmount(1);
-            discoveredElements[r.second]->addAmount(1);
-            return discoveredElements[r.second];
+
+            auto combinedElement = factory[r.second]();
+            return combinedElement;
         }
     }
     return nullptr;
@@ -79,12 +74,10 @@ std::pair<Element*, Element*> operator-(Element& elem) {
             
         for (auto& r : recipes) {
             if (r.second == compound) {
-                elem.subtractAmount(1);
+                delete &elem;
                 
-                auto elem1 = discoveredElements[r.first.first];
-                auto elem2 = discoveredElements[r.first.second];
-                elem1->addAmount(1);
-                elem2->addAmount(1);
+                auto elem1 = factory[r.first.first]();
+                auto elem2 = factory[r.first.second]();
                 return {elem1, elem2};
             }
         }
@@ -116,42 +109,135 @@ class Mud final : public CompoundElement<MudName> {};
 class Lava final : public CompoundElement<LavaName> {};
 class Energy final : public CompoundElement<EnergyName> {};
 
-int main() {
-    discoveredElements[typeid(Fire)] = new Fire();
-    discoveredElements[typeid(Water)] = new Water();
-    discoveredElements[typeid(Steam)] = new Steam();
-    discoveredElements[typeid(Earth)] = new Earth();
-    discoveredElements[typeid(Air)] = new Air();
-    discoveredElements[typeid(Mud)] = new Mud();
-    discoveredElements[typeid(Lava)] = new Lava();
-    discoveredElements[typeid(Energy)] = new Energy();
-    
+void factorySetup() {
+    factory[typeid(Fire)] = []() { return new Fire(); };
+    factory[typeid(Water)] = []() { return new Water(); };
+    factory[typeid(Earth)] = []() { return new Earth(); };
+    factory[typeid(Air)] = []() { return new Air(); };
+    factory[typeid(Steam)] = []() { return new Steam(); };
+    factory[typeid(Mud)] = []() { return new Mud(); };
+    factory[typeid(Lava)] = []() { return new Lava(); };
+    factory[typeid(Energy)] = []() { return new Energy(); };
+}
+
+void recipeSetup() {
     registerRecipe({typeid(Fire), typeid(Water)}, typeid(Steam));
     registerRecipe({typeid(Earth), typeid(Water)}, typeid(Mud));
     registerRecipe({typeid(Fire), typeid(Earth)}, typeid(Lava));
     registerRecipe({typeid(Air), typeid(Fire)}, typeid(Energy));
-    
-    try {
-        Fire& fire = *static_cast<Fire*>(discoveredElements[typeid(Fire)]);
-        Water& water = *static_cast<Water*>(discoveredElements[typeid(Water)]);
-        
-        std::cout << "Before combination - Fire: " << fire.getAmount() << ", Water: " << water.getAmount() << std::endl;
-        
-        auto steam = fire + water;
-        
-        std::cout << "After combination - Fire: " << fire.getAmount() << ", Water: " << water.getAmount();
-        if (steam) {
-            std::cout << ", Steam: " << steam->getAmount() << std::endl;
-        }
+}
 
-        if (steam && (steam->getAmount() > 0)) {
-            auto result = -(*steam);
-            std::cout << "After decomposition - Fire: " << result.first->getAmount() << ", Water: " << result.second->getAmount() << ", Steam: " << steam->getAmount() << std::endl;
-        }
-        
-    } catch (const std::exception& e) {
-        std::cout << "Error: " << e.what() << std::endl;
+int main() {    
+    factorySetup();
+    recipeSetup();
+
+    std::cout << "=== Element Combination System Demo ===\n\n";
+
+    // Create basic elements
+    Fire fire;
+    Water water;
+    Earth earth;
+    Air air;
+
+    std::cout << "Initial amounts:\n";
+    std::cout << "Fire: " << fire.getAmount() << "\n";
+    std::cout << "Water: " << water.getAmount() << "\n";
+    std::cout << "Earth: " << earth.getAmount() << "\n";
+    std::cout << "Air: " << air.getAmount() << "\n\n";
+
+    // Test combination: Fire + Water = Steam
+    std::cout << "=== Combining Fire + Water ===\n";
+    Element* steam = fire + water;
+    if (steam) {
+        std::cout << "Created Steam! Amount: " << steam->getAmount() << "\n";
+        std::cout << "Fire remaining: " << fire.getAmount() << "\n";
+        std::cout << "Water remaining: " << water.getAmount() << "\n";
+        std::cout << "Is Steam basic? " << (steam->isBasic() ? "Yes" : "No") << "\n\n";
     }
+
+    // Test combination: Earth + Water = Mud
+    std::cout << "=== Combining Earth + Water ===\n";
+    Element* mud = earth + water;
+    if (mud) {
+        std::cout << "Created Mud! Amount: " << mud->getAmount() << "\n";
+        std::cout << "Earth remaining: " << earth.getAmount() << "\n";
+        std::cout << "Water remaining: " << water.getAmount() << "\n\n";
+    }
+
+    // Test combination: Fire + Earth = Lava
+    std::cout << "=== Combining Fire + Earth ===\n";
+    Element* lava = fire + earth;
+    if (lava) {
+        std::cout << "Created Lava! Amount: " << lava->getAmount() << "\n";
+        std::cout << "Fire remaining: " << fire.getAmount() << "\n";
+        std::cout << "Earth remaining: " << earth.getAmount() << "\n\n";
+    }
+
+    // Test combination: Air + Fire = Energy
+    std::cout << "=== Combining Air + Fire ===\n";
+    Element* energy = air + fire;
+    if (energy) {
+        std::cout << "Created Energy! Amount: " << energy->getAmount() << "\n";
+        std::cout << "Air remaining: " << air.getAmount() << "\n";
+        std::cout << "Fire remaining: " << fire.getAmount() << "\n\n";
+    }
+
+    // Test multiple combinations of same type
+    std::cout << "=== Creating more Steam ===\n";
+    Element* steam2 = fire + water;
+    Element* steam3 = fire + water;
+    std::cout << "Total Steam amount: " << steam->getAmount() << "\n";
+    std::cout << "Fire remaining: " << fire.getAmount() << "\n";
+    std::cout << "Water remaining: " << water.getAmount() << "\n\n";
+
+    // Test decomposition
+    std::cout << "=== Decomposing Steam ===\n";
+    std::cout << "Steam amount before: " << steam->getAmount() << "\n";
+    auto [elem1, elem2] = -(*steam);
+    std::cout << "Steam amount after: " << steam->getAmount() << "\n";
+    std::cout << "Decomposed into two elements:\n";
+    std::cout << "Element 1 type: " << typeid(*elem1).name() << ", amount: " << elem1->getAmount() << "\n";
+    std::cout << "Element 2 type: " << typeid(*elem2).name() << ", amount: " << elem2->getAmount() << "\n\n";
+
+    // Test invalid combination
+    std::cout << "=== Testing invalid combination (Fire + Fire) ===\n";
+    Fire fire2;
+    Element* invalid = fire + fire2;
+    if (!invalid) {
+        std::cout << "No recipe found - correctly returned nullptr\n\n";
+    }
+
+    // Test error handling: try to decompose basic element
+    std::cout << "=== Testing decomposition of basic element ===\n";
+    try {
+        auto result = -fire;
+    } catch (const std::runtime_error& e) {
+        std::cout << "Caught expected error: " << e.what() << "\n\n";
+    }
+
+    // Test error handling: not enough resources
+    std::cout << "=== Testing insufficient resources ===\n";
+    try {
+        // Try to subtract more than available
+        Fire testFire;
+        testFire.subtractAmount(51); // We only have 50
+    } catch (const std::runtime_error& e) {
+        std::cout << "Caught expected error: " << e.what() << "\n\n";
+    }
+
+    // Show final state
+    std::cout << "=== Final State ===\n";
+    std::cout << "Fire: " << fire.getAmount() << "\n";
+    std::cout << "Water: " << water.getAmount() << "\n";
+    std::cout << "Earth: " << earth.getAmount() << "\n";
+    std::cout << "Air: " << air.getAmount() << "\n";
+
+    // Cleanup
+    delete steam2;
+    delete steam3;
+    delete mud;
+    delete lava;
+    delete energy;
 
     return 0;
 }
